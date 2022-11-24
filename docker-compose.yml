@@ -1,0 +1,114 @@
+version: "3.8"
+
+services:
+  haproxy:
+    build: ./docker/haproxy
+    volumes:
+      - ./docker/haproxy/conf:/usr/local/etc/haproxy:ro
+    ports:
+      - 33076:3306
+    depends_on:
+      - proxysql1
+      - proxysql2
+      - proxysql3
+
+  proxysql1:
+    image: proxysql/proxysql:2.4.4
+    volumes:
+      - proxysql1:/var/lib/proxysql
+      - ./docker/proxysql/proxysql.cnf:/etc/proxysql.cnf
+    ports:
+      - 60331:6033
+    depends_on:
+      - percona1
+      - percona2
+      - percona3
+
+  proxysql2:
+    image: proxysql/proxysql:2.4.4
+    volumes:
+      - proxysql2:/var/lib/proxysql
+      - ./docker/proxysql/proxysql.cnf:/etc/proxysql.cnf
+    ports:
+      - 60332:6033
+    depends_on:
+      - percona1
+      - percona2
+      - percona3
+
+  proxysql3:
+    image: proxysql/proxysql:2.4.4
+    volumes:
+      - proxysql3:/var/lib/proxysql
+      - ./docker/proxysql/proxysql.cnf:/etc/proxysql.cnf
+    ports:
+      - 60333:6033
+    depends_on:
+      - percona1
+      - percona2
+      - percona3
+
+  percona1:
+    build: ./docker/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql_mode="" 
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456789abcroot
+      - CLUSTER_NAME=pxc-cluster1
+    volumes:
+      - ./docker/mysql/cert:/cert
+      - ./docker/mysql/config:/etc/percona-xtradb-cluster.conf.d
+      - percona1:/var/lib/mysql
+    ports:
+      - 33061:3306
+    cap_add:
+      - SYS_NICE
+
+  percona2:
+    build: ./docker/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql_mode=""
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456789abcroot
+      - CLUSTER_NAME=pxc-cluster1
+      - CLUSTER_JOIN=percona1
+    volumes:
+      - ./docker/mysql/cert:/cert
+      - ./docker/mysql/config:/etc/percona-xtradb-cluster.conf.d
+      - percona2:/var/lib/mysql
+    ports:
+      - 33062:3306
+    cap_add:
+      - SYS_NICE
+    depends_on:
+      - percona1
+
+  percona3:
+    build: ./docker/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql_mode=""
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456789abcroot
+      - CLUSTER_NAME=pxc-cluster1
+      - CLUSTER_JOIN=percona1
+    volumes:
+      - ./docker/mysql/cert:/cert
+      - ./docker/mysql/config:/etc/percona-xtradb-cluster.conf.d
+      - percona3:/var/lib/mysql
+    ports:
+      - 33063:3306
+    cap_add:
+      - SYS_NICE
+    depends_on:
+      - percona1
+      - percona2
+  
+volumes:
+  proxysql1:
+  proxysql2:
+  proxysql3:
+  percona1:
+  percona2:
+  percona3:
+
+networks:
+  external:
+    external: true
+    name: pxc-network
